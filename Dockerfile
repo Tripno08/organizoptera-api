@@ -48,7 +48,7 @@ COPY services/ ./services/
 COPY prisma/ ./prisma/
 
 # Generate Prisma Client
-RUN cd services/org-api && pnpm prisma generate
+RUN pnpm --filter org-api exec prisma generate --schema=../../prisma/schema.prisma
 
 # Build all packages
 RUN pnpm --filter "./packages/**" build
