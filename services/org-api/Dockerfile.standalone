@@ -1,0 +1,47 @@
+# Multi-stage build for org-api standalone deployment
+FROM node:22-alpine AS base
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy only org-api files
+COPY . .
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Generate Prisma Client (using local schema)
+RUN if [ -f prisma/schema.prisma ]; then pnpm exec prisma generate; fi
+
+# Build TypeScript
+RUN pnpm exec tsc
+
+# Production stage
+FROM node:22-alpine AS production
+
+RUN corepack enable && corepack prepare pnpm@latest --activate && \
+    apk add --no-cache dumb-init
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+WORKDIR /app
+
+# Copy from build stage
+COPY --from=base --chown=nestjs:nodejs /app/package.json ./
+COPY --from=base --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=base --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=base --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=base --chown=nestjs:nodejs /app/generated ./generated
+
+# Generate Prisma Client in production
+RUN pnpm exec prisma generate
+
+USER nestjs
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:${PORT:-5001}/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+EXPOSE 5001
+
+CMD ["dumb-init", "node", "dist/main.js"]

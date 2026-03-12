@@ -1,0 +1,518 @@
+// Organizoptera Prisma Schema
+// Multi-Tenancy, RBAC, and Educational Organization Structure
+// DPS Level 3: Auth Protocol | DPS Level 8: Orchestration Protocol
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "darwin-arm64"]
+  output        = "../services/org-api/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// 1. SCHOOL NETWORK - Top-level organization (Rede Escolar)
+// ============================================================================
+model SchoolNetwork {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  domain      String?  @unique
+  status      NetworkStatus @default(ACTIVE)
+  settings    Json?    // Network-wide settings
+  metadata    Json?    // Additional metadata
+
+  schools       School[]
+  subscription  Subscription?
+  invoices      Invoice[]
+  payments      Payment[]
+  refunds       Refund[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([slug])
+  @@map("school_networks")
+}
+
+enum NetworkStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TRIAL
+}
+
+// ============================================================================
+// 2. SCHOOL - Individual school within a network
+// ============================================================================
+model School {
+  id              String        @id @default(uuid()) @db.Uuid
+  networkId       String        @db.Uuid
+  name            String
+  slug            String
+  code            String?       // School code (INEP, etc.)
+  address         String?
+  city            String?
+  state           String?
+  country         String        @default("BR")
+  phone           String?
+  email           String?
+  principalName   String?
+  status          SchoolStatus  @default(ACTIVE)
+  settings        Json?         // School-specific settings
+  metadata        Json?
+
+  network         SchoolNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  grades          Grade[]
+  classrooms      Classroom[]
+  teachers        Teacher[]
+  students        Student[]
+  schoolYears     SchoolYear[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([networkId, slug])
+  @@index([networkId])
+  @@index([status])
+  @@map("schools")
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}
+
+// ============================================================================
+// 3. SCHOOL YEAR - Academic year configuration
+// ============================================================================
+model SchoolYear {
+  id          String    @id @default(uuid()) @db.Uuid
+  schoolId    String    @db.Uuid
+  year        Int       // e.g., 2025
+  name        String    // e.g., "2025"
+  startDate   DateTime
+  endDate     DateTime
+  isCurrent   Boolean   @default(false)
+  status      YearStatus @default(ACTIVE)
+
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classrooms  Classroom[]
+  enrollments Enrollment[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([schoolId, year])
+  @@index([schoolId])
+  @@index([isCurrent])
+  @@map("school_years")
+}
+
+enum YearStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+// ============================================================================
+// 4. GRADE - Grade level (1º ano, 2º ano, etc.)
+// ============================================================================
+model Grade {
+  id              String      @id @default(uuid()) @db.Uuid
+  schoolId        String      @db.Uuid
+  name            String      // e.g., "1º Ano", "2º Ano"
+  code            String      // e.g., "1EF", "2EF"
+  sequenceOrder   Int         // 1, 2, 3, ..., 9
+  educationLevel  String      @default("EF") // EF (Fundamental), EM (Médio), EI (Infantil)
+  metadata        Json?
+
+  school          School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classrooms      Classroom[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@index([sequenceOrder])
+  @@map("grades")
+}
+
+// ============================================================================
+// 5. CLASSROOM - Class/Turma (e.g., "1º Ano A", "1º Ano B")
+// ============================================================================
+model Classroom {
+  id              String        @id @default(uuid()) @db.Uuid
+  schoolId        String        @db.Uuid
+  gradeId         String        @db.Uuid
+  schoolYearId    String        @db.Uuid
+  name            String        // e.g., "Turma A", "Turma B"
+  code            String        // e.g., "1A", "1B"
+  shift           Shift         @default(MORNING)
+  capacity        Int           @default(30)
+  room            String?       // Physical room number
+  status          ClassroomStatus @default(ACTIVE)
+  metadata        Json?
+
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  grade           Grade         @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear    @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  enrollments     Enrollment[]
+  teacherAssignments TeacherClassroom[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([schoolId, gradeId, schoolYearId, code])
+  @@index([schoolId])
+  @@index([gradeId])
+  @@index([schoolYearId])
+  @@index([status])
+  @@map("classrooms")
+}
+
+enum Shift {
+  MORNING
+  AFTERNOON
+  EVENING
+  FULL_TIME
+}
+
+enum ClassroomStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+// ============================================================================
+// 6. STUDENT - Student entity
+// ============================================================================
+model Student {
+  id              String        @id @default(uuid()) @db.Uuid
+  schoolId        String        @db.Uuid
+  firstName       String
+  lastName        String
+  email           String?
+  birthDate       DateTime?
+  gender          Gender?
+  studentCode     String?       // RA (Registro do Aluno)
+  guardianName    String?
+  guardianPhone   String?
+  guardianEmail   String?
+  address         String?
+  status          StudentStatus @default(ACTIVE)
+  metadata        Json?
+
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollments     Enrollment[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([schoolId, studentCode])
+  @@index([schoolId])
+  @@index([status])
+  @@index([lastName, firstName])
+  @@map("students")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  TRANSFERRED
+  GRADUATED
+}
+
+// ============================================================================
+// 7. TEACHER - Teacher entity
+// ============================================================================
+model Teacher {
+  id              String        @id @default(uuid()) @db.Uuid
+  schoolId        String        @db.Uuid
+  firstName       String
+  lastName        String
+  email           String        @unique // REQUIRED: unique email for auth
+  passwordHash    String?       // bcrypt hash for authentication
+  phone           String?
+  specialization  String?       // Subject specialization
+  employmentType  EmploymentType @default(FULL_TIME)
+  status          TeacherStatus @default(ACTIVE)
+  metadata        Json?
+
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classroomAssignments TeacherClassroom[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([schoolId])
+  @@index([status])
+  @@index([lastName, firstName])
+  @@index([email])
+  @@map("teachers")
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACTOR
+  SUBSTITUTE
+}
+
+enum TeacherStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+// ============================================================================
+// 8. TEACHER_CLASSROOM - Many-to-many: Teachers <-> Classrooms
+// ============================================================================
+model TeacherClassroom {
+  id              String      @id @default(uuid()) @db.Uuid
+  teacherId       String      @db.Uuid
+  classroomId     String      @db.Uuid
+  subject         String?     // Subject taught in this classroom
+  isMainTeacher   Boolean     @default(false) // Primary teacher for the classroom
+
+  teacher         Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom       Classroom   @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([teacherId, classroomId])
+  @@index([teacherId])
+  @@index([classroomId])
+  @@map("teacher_classrooms")
+}
+
+// ============================================================================
+// 9. ENROLLMENT - Student enrollment in a classroom
+// ============================================================================
+model Enrollment {
+  id              String          @id @default(uuid()) @db.Uuid
+  studentId       String          @db.Uuid
+  classroomId     String          @db.Uuid
+  schoolYearId    String          @db.Uuid
+  enrollmentDate  DateTime        @default(now())
+  status          EnrollmentStatus @default(ACTIVE)
+  metadata        Json?
+
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroom       Classroom       @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  schoolYear      SchoolYear      @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([studentId, classroomId, schoolYearId])
+  @@index([studentId])
+  @@index([classroomId])
+  @@index([schoolYearId])
+  @@index([status])
+  @@map("enrollments")
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  INACTIVE
+  TRANSFERRED
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================================================
+// 10. SUBSCRIPTION - Network subscription and billing
+// ============================================================================
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  networkId          String             @unique @db.Uuid
+  plan               SubscriptionPlan   @default(FREE)
+  status             SubscriptionStatus @default(TRIAL)
+  billingCycle       BillingCycle       @default(MONTHLY)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  trialEndsAt        DateTime?
+  cancelAt           DateTime?
+  canceledAt         DateTime?
+  features           Json // Feature limits as JSON
+  metadata           Json?
+
+  network  SchoolNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  invoices Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([networkId])
+  @@index([status])
+  @@index([plan])
+  @@map("subscriptions")
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+// ============================================================================
+// 11. INVOICE - Billing invoices
+// ============================================================================
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceNumber  String        @unique
+  networkId      String        @db.Uuid
+  subscriptionId String        @db.Uuid
+  status         InvoiceStatus @default(PENDING)
+  subtotal       Int // Amount in cents
+  discountAmount Int           @default(0)
+  taxAmount      Int           @default(0)
+  total          Int
+  amountDue      Int
+  amountPaid     Int           @default(0)
+  currency       String        @default("BRL")
+  dueDate        DateTime
+  paidAt         DateTime?
+  lineItems      Json // InvoiceLineItem[] as JSON
+  metadata       Json?
+
+  network      SchoolNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  subscription Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+  refunds      Refund[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([networkId])
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  PAST_DUE
+  CANCELLED
+  REFUNDED
+  VOID
+}
+
+// ============================================================================
+// 12. PAYMENT - Payment records
+// ============================================================================
+model Payment {
+  id               String        @id @default(uuid()) @db.Uuid
+  invoiceId        String        @db.Uuid
+  networkId        String        @db.Uuid
+  transactionId    String?       @unique
+  paymentMethod    PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  amount           Int // Amount in cents
+  currency         String        @default("BRL")
+  paymentDate      DateTime?
+  failureReason    String?
+  processorData    Json? // Payment processor metadata
+  metadata         Json?
+
+  network SchoolNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+  invoice Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  refunds Refund[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([networkId])
+  @@index([status])
+  @@index([paymentDate])
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  PIX
+  BOLETO
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+// ============================================================================
+// 13. REFUND - Payment refunds
+// ============================================================================
+model Refund {
+  id          String       @id @default(uuid()) @db.Uuid
+  paymentId   String       @db.Uuid
+  invoiceId   String       @db.Uuid
+  networkId   String       @db.Uuid
+  status      RefundStatus @default(PENDING)
+  amount      Int // Amount in cents (can be partial)
+  reason      String?
+  refundDate  DateTime?
+  metadata    Json?
+
+  payment Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  network SchoolNetwork @relation(fields: [networkId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@index([networkId])
+  @@index([status])
+  @@map("refunds")
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}

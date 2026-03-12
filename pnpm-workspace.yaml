@@ -1,0 +1,6 @@
+packages:
+  # Scoped packages (@organizoptera/*)
+  - 'packages/@organizoptera/*'
+
+  # Services
+  - 'services/*'

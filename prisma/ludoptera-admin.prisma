@@ -1,0 +1,354 @@
+// Ludoptera Admin System - Game Assignment and Protocol Schema
+// Extends Organizoptera schema with gamification configuration models
+// DPS Level 7: Gamification Protocol
+
+// NOTE: This file should be merged with schema.prisma or included via Prisma composite schemas
+// For now, we define the models here for reference
+
+// ============================================================================
+// LUDOPTERA ENUMS
+// ============================================================================
+
+enum GameType {
+  CITY_BUILDER    // Current - build city with educational activities
+  QUEST           // Future - RPG/Adventure style learning
+  PUZZLE          // Future - Educational puzzles
+  VIRTUAL_PET     // Future - Tamagotchi-style educational pet
+}
+
+enum Subject {
+  MATH            // Matematica
+  PORTUGUESE      // Lingua Portuguesa
+  SCIENCE         // Ciencias
+  HISTORY         // Historia
+  GEOGRAPHY       // Geografia
+  ENGLISH         // Ingles
+  ARTS            // Artes
+  MULTI_SUBJECT   // Multidisciplinar
+}
+
+enum GameStatus {
+  ACTIVE
+  INACTIVE
+  BETA
+  DEPRECATED
+}
+
+enum GameMode {
+  CAMPAIGN      // Follows complete BNCC curriculum for grade/year
+  SPECIAL       // Custom path (remediation, intervention)
+  FREEPLAY      // Free mode (no curricular progression)
+}
+
+enum IntegrationMode {
+  STANDALONE    // Independent game
+  PERFORMATH    // Integrated with CoggPerformath
+  PERFORLIT     // Integrated with CoggPerforLit
+  MATHSUITE     // Integrated with CoggMathSuite
+  CUSTOM        // Custom integration
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum PathSourceType {
+  MANUAL            // Created manually by teacher/admin
+  DIAGNOSTIC        // Generated from diagnostic assessment
+  RTI_INTERVENTION  // Generated from RTI intervention (Interventa)
+  AI_RECOMMENDED    // Recommended by AI system
+}
+
+enum XPSourceType {
+  EXERCISE      // XP from completing exercises correctly
+  ENGAGEMENT    // XP from time engaged (active time)
+  REGULARITY    // XP from meeting protocol requirements
+  STREAK        // XP from consecutive daily sessions
+  ACHIEVEMENT   // XP from unlocking achievements
+}
+
+// ============================================================================
+// 1. LUDOPTERA GAME - Game definitions (Math City Builder, etc.)
+// ============================================================================
+model LudopteraGame {
+  id                String        @id @default(uuid()) @db.Uuid
+  name              String        // "Math City Builder", "Literacy Quest"
+  slug              String        @unique
+  description       String?
+  gameType          GameType      @default(CITY_BUILDER)
+  subject           Subject       @default(MATH)
+  status            GameStatus    @default(ACTIVE)
+  defaultTheme      String        @default("funpark")
+  supportedThemes   String[]      // ["funpark", "ecocity", "medieval", "space", "ocean", "cave"]
+
+  // Age range
+  minAge            Int           @default(6)
+  maxAge            Int           @default(14)
+
+  // Game metadata
+  version           String        @default("1.0.0")
+  iconUrl           String?
+  thumbnailUrl      String?
+  metadata          Json?         // Additional game configuration
+
+  // Relations
+  assignments       GameAssignment[]
+
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status])
+  @@index([subject])
+  @@index([gameType])
+  @@map("ludoptera_games")
+}
+
+// ============================================================================
+// 2. GAME ASSIGNMENT - Where we enable games for networks/schools/classrooms
+// ============================================================================
+model GameAssignment {
+  id                String            @id @default(uuid()) @db.Uuid
+  gameId            String            @db.Uuid
+
+  // Scope (hierarchical - only ONE is set per assignment)
+  // Follows Organizoptera hierarchy: Network > School > Grade > Classroom > Student
+  networkId         String?           @db.Uuid  // Entire network
+  schoolId          String?           @db.Uuid  // Specific school
+  gradeId           String?           @db.Uuid  // Specific grade/year
+  classroomId       String?           @db.Uuid  // Specific classroom
+  studentId         String?           @db.Uuid  // Individual student (for special interventions)
+
+  // Game configuration
+  theme             String            @default("funpark")
+  mode              GameMode          @default(CAMPAIGN)
+
+  // Product integration
+  integrationMode   IntegrationMode   @default(STANDALONE)
+  productId         String?           // "performath", "perforlit", etc.
+  productConfig     Json?             // Product-specific configuration
+
+  // Status and validity
+  status            AssignmentStatus  @default(ACTIVE)
+  startDate         DateTime          @default(now())
+  endDate           DateTime?
+
+  // Relations
+  game              LudopteraGame     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  protocol          GameProtocol?
+  customPaths       CustomPath[]
+
+  // Audit
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  createdBy         String?           @db.Uuid  // User who created the assignment
+  updatedBy         String?           @db.Uuid  // User who last updated
+
+  // Ensure only one scope level is set
+  @@index([networkId])
+  @@index([schoolId])
+  @@index([gradeId])
+  @@index([classroomId])
+  @@index([studentId])
+  @@index([gameId])
+  @@index([status])
+  @@index([mode])
+  @@map("ludoptera_game_assignments")
+}
+
+// ============================================================================
+// 3. GAME PROTOCOL - Session rules and XP configuration
+// ============================================================================
+model GameProtocol {
+  id                String            @id @default(uuid()) @db.Uuid
+  assignmentId      String            @unique @db.Uuid
+  name              String?           // Optional name for this protocol template
+
+  // Session frequency
+  sessionsPerWeek   Int               @default(3)    // Target sessions per week (1-7)
+
+  // Time limits (in minutes)
+  minSessionTime    Int               @default(10)   // Minimum session duration
+  maxSessionTime    Int               @default(30)   // Maximum session duration
+
+  // Exercise limits (per session)
+  minExercises      Int               @default(5)    // Minimum exercises to complete
+  maxExercises      Int               @default(20)   // Maximum exercises allowed
+
+  // XP Configuration
+  exerciseXpBase    Int               @default(10)   // Base XP per correct exercise
+  exerciseXpBonus   Int               @default(5)    // Bonus XP for first-try correct
+  engagementXpRate  Float             @default(1.0)  // XP per minute of active engagement
+  regularityBonus   Float             @default(1.5)  // Multiplier when protocol is met
+
+  // Streak system
+  streakEnabled     Boolean           @default(true)
+  streakBonusPerDay Float             @default(0.1)  // +10% per consecutive day
+  maxStreakBonus    Float             @default(2.0)  // Cap at 2x multiplier
+
+  // Difficulty adjustment
+  adaptiveDifficulty Boolean          @default(true) // Auto-adjust based on performance
+  difficultyFloor   Int               @default(1)    // Minimum difficulty level
+  difficultyCeiling Int               @default(10)   // Maximum difficulty level
+
+  // Additional settings
+  allowSkip         Boolean           @default(false) // Allow skipping exercises
+  showHints         Boolean           @default(true)  // Enable hint system
+  showProgress      Boolean           @default(true)  // Show progress indicators
+
+  // Protocol metadata
+  metadata          Json?             // Additional configuration
+
+  // Relations
+  assignment        GameAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("ludoptera_game_protocols")
+}
+
+// ============================================================================
+// 4. CUSTOM PATH - For SPECIAL mode with targeted skills
+// ============================================================================
+model CustomPath {
+  id                String            @id @default(uuid()) @db.Uuid
+  assignmentId      String            @db.Uuid
+  name              String            // "Fraction Reinforcement", "RTI Tier 2 Math"
+  description       String?
+
+  // BNCC skills selected for this path
+  targetSkills      String[]          // ["EF05MA07", "EF05MA08", "EF05MA09"]
+
+  // Skill ordering and progress
+  skillOrder        Json?             // Custom skill sequence [{skillCode, order, prerequisites}]
+  masteryThreshold  Float             @default(0.8) // 80% correct to master skill
+
+  // Path metadata
+  sourceType        PathSourceType    @default(MANUAL)
+  sourceId          String?           // Assessment/intervention ID that generated this path
+
+  // Progress tracking
+  totalSkills       Int               @default(0)
+  completedSkills   Int               @default(0)
+
+  // Status
+  isActive          Boolean           @default(true)
+  completedAt       DateTime?
+
+  // Relations
+  assignment        GameAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  // Audit
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  createdBy         String?           @db.Uuid
+
+  @@index([assignmentId])
+  @@index([sourceType])
+  @@index([isActive])
+  @@map("ludoptera_custom_paths")
+}
+
+// ============================================================================
+// 5. XP AWARD LOG - Track all XP awards with sources
+// ============================================================================
+model XPAwardLog {
+  id                String            @id @default(uuid()) @db.Uuid
+  studentId         String            @db.Uuid
+  assignmentId      String?           @db.Uuid
+
+  // XP details
+  sourceType        XPSourceType
+  baseXP            Int               // Base XP before multipliers
+  multiplier        Float             @default(1.0)
+  finalXP           Int               // Final XP awarded (baseXP * multiplier)
+
+  // Context - Exercise
+  activityId        String?           @db.Uuid
+  responseId        String?           @db.Uuid
+  skillCode         String?           // BNCC skill code (e.g., "EF05MA07")
+  isCorrect         Boolean?
+  score             Int?              // 0-100
+  timeSpent         Int?              // Seconds
+  difficulty        Int?              // 1-10
+
+  // Context - Engagement
+  sessionId         String?           @db.Uuid
+  sessionDuration   Int?              // Minutes
+  activeTime        Int?              // Active time in minutes
+
+  // Context - Regularity
+  protocolId        String?           @db.Uuid
+  sessionsThisWeek  Int?
+  targetSessions    Int?
+  protocolMet       Boolean?
+
+  // Context - Streak
+  streakDays        Int?              // Current streak length
+
+  // Metadata
+  metadata          Json?
+
+  // Timestamp
+  timestamp         DateTime          @default(now())
+
+  @@index([studentId])
+  @@index([assignmentId])
+  @@index([sourceType])
+  @@index([timestamp])
+  @@index([skillCode])
+  @@map("ludoptera_xp_award_logs")
+}
+
+// ============================================================================
+// 6. STUDENT GAME STATE - Per-student game progress
+// ============================================================================
+model StudentGameState {
+  id                String            @id @default(uuid()) @db.Uuid
+  studentId         String            @db.Uuid
+  assignmentId      String            @db.Uuid
+
+  // Current state
+  currentTheme      String            @default("funpark")
+  currentLevel      Int               @default(1)
+  totalXP           Int               @default(0)
+
+  // Session tracking
+  totalSessions     Int               @default(0)
+  totalPlayTime     Int               @default(0)  // Minutes
+  lastSessionAt     DateTime?
+
+  // Streak
+  currentStreak     Int               @default(0)
+  longestStreak     Int               @default(0)
+  lastActivityDate  DateTime?
+
+  // Progress
+  exercisesCompleted Int              @default(0)
+  exercisesCorrect  Int               @default(0)
+  skillsStarted     Int               @default(0)
+  skillsMastered    Int               @default(0)
+
+  // Protocol compliance
+  sessionsThisWeek  Int               @default(0)
+  weekStartDate     DateTime?
+  protocolCompliance Float            @default(0.0) // 0-1 compliance rate
+
+  // City state (for city-builder game)
+  cityData          Json?             // Building placements, coins, etc.
+
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([studentId, assignmentId])
+  @@index([studentId])
+  @@index([assignmentId])
+  @@index([currentLevel])
+  @@map("ludoptera_student_game_states")
+}

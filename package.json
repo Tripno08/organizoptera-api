@@ -1,0 +1,31 @@
+{
+  "name": "organizoptera-deploy",
+  "version": "1.0.0",
+  "description": "Organizoptera Deployment Package for Railway",
+  "private": true,
+  "workspaces": [
+    "packages/@organizoptera/*",
+    "services/*"
+  ],
+  "scripts": {
+    "build": "pnpm --filter \"./packages/**\" build && pnpm --filter \"./services/**\" build",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "start": "node services/org-api/dist/main.js"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.14.4",
+  "dependencies": {
+    "@prisma/client": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "prisma": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

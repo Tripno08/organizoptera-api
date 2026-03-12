@@ -1,0 +1,71 @@
+{
+  "name": "@organizoptera/billing",
+  "version": "1.0.0",
+  "description": "Billing and invoicing management for Organizoptera",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./service": {
+      "import": {
+        "types": "./dist/billing-service.d.ts",
+        "default": "./dist/billing-service.js"
+      },
+      "require": {
+        "types": "./dist/billing-service.d.ts",
+        "default": "./dist/billing-service.js"
+      }
+    },
+    "./types": {
+      "import": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      },
+      "require": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@organizoptera/types": "workspace:*",
+    "@organizoptera/core": "workspace:*",
+    "@organizoptera/subscription": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8"
+  },
+  "keywords": [
+    "organizoptera",
+    "billing",
+    "invoicing",
+    "payments",
+    "webhooks"
+  ],
+  "license": "AGPL-3.0"
+}
