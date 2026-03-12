@@ -1,0 +1,99 @@
+{
+  "name": "@organizoptera/types",
+  "version": "1.0.0",
+  "description": "TypeScript types for Organizoptera multi-tenant organization system",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./entities": {
+      "import": {
+        "types": "./dist/entities.d.ts",
+        "default": "./dist/entities.js"
+      },
+      "require": {
+        "types": "./dist/entities.d.ts",
+        "default": "./dist/entities.js"
+      }
+    },
+    "./branded": {
+      "import": {
+        "types": "./dist/branded.d.ts",
+        "default": "./dist/branded.js"
+      },
+      "require": {
+        "types": "./dist/branded.d.ts",
+        "default": "./dist/branded.js"
+      }
+    },
+    "./dto": {
+      "import": {
+        "types": "./dist/dto.d.ts",
+        "default": "./dist/dto.js"
+      },
+      "require": {
+        "types": "./dist/dto.d.ts",
+        "default": "./dist/dto.js"
+      }
+    },
+    "./rbac": {
+      "import": {
+        "types": "./dist/rbac.d.ts",
+        "default": "./dist/rbac.js"
+      },
+      "require": {
+        "types": "./dist/rbac.d.ts",
+        "default": "./dist/rbac.js"
+      }
+    },
+    "./events": {
+      "import": {
+        "types": "./dist/events.d.ts",
+        "default": "./dist/events.js"
+      },
+      "require": {
+        "types": "./dist/events.d.ts",
+        "default": "./dist/events.js"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "organizoptera",
+    "types",
+    "typescript",
+    "multi-tenant",
+    "rbac",
+    "education"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cogg-ecosystem/organizoptera.git",
+    "directory": "packages/types"
+  },
+  "license": "AGPL-3.0"
+}

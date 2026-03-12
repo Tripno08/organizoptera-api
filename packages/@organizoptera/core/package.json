@@ -1,0 +1,76 @@
+{
+  "name": "@organizoptera/core",
+  "version": "1.0.0",
+  "description": "Core utilities for Organizoptera multi-tenant organization system",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./hierarchy": {
+      "import": {
+        "types": "./dist/hierarchy/index.d.ts",
+        "default": "./dist/hierarchy/index.js"
+      },
+      "require": {
+        "types": "./dist/hierarchy/index.d.ts",
+        "default": "./dist/hierarchy/index.js"
+      }
+    },
+    "./validation": {
+      "import": {
+        "types": "./dist/validation/index.d.ts",
+        "default": "./dist/validation/index.js"
+      },
+      "require": {
+        "types": "./dist/validation/index.d.ts",
+        "default": "./dist/validation/index.js"
+      }
+    },
+    "./cache": {
+      "import": {
+        "types": "./dist/cache/index.d.ts",
+        "default": "./dist/cache/index.js"
+      },
+      "require": {
+        "types": "./dist/cache/index.d.ts",
+        "default": "./dist/cache/index.js"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@organizoptera/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "organizoptera",
+    "core",
+    "hierarchy",
+    "validation",
+    "multi-tenant"
+  ],
+  "license": "AGPL-3.0"
+}

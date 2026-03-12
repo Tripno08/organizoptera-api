@@ -19,6 +19,10 @@ COPY packages/@organizoptera/billing/package.json ./packages/@organizoptera/bill
 COPY packages/@organizoptera/subscription/package.json ./packages/@organizoptera/subscription/
 COPY packages/@organizoptera/resources/package.json ./packages/@organizoptera/resources/
 COPY packages/@organizoptera/curriculoptera-adapter/package.json ./packages/@organizoptera/curriculoptera-adapter/
+COPY packages/@organizoptera/types/package.json ./packages/@organizoptera/types/
+COPY packages/@organizoptera/core/package.json ./packages/@organizoptera/core/
+COPY packages/@organizoptera/rbac/package.json ./packages/@organizoptera/rbac/
+COPY packages/@organizoptera/usage/package.json ./packages/@organizoptera/usage/
 
 COPY services/org-api/package.json ./services/org-api/
 

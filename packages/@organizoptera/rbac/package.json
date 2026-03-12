@@ -1,0 +1,67 @@
+{
+  "name": "@organizoptera/rbac",
+  "version": "1.0.0",
+  "description": "Role-Based Access Control engine for Organizoptera",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./permission-checker": {
+      "import": {
+        "types": "./dist/permission-checker.d.ts",
+        "default": "./dist/permission-checker.js"
+      },
+      "require": {
+        "types": "./dist/permission-checker.d.ts",
+        "default": "./dist/permission-checker.js"
+      }
+    },
+    "./role-resolver": {
+      "import": {
+        "types": "./dist/role-resolver.d.ts",
+        "default": "./dist/role-resolver.js"
+      },
+      "require": {
+        "types": "./dist/role-resolver.d.ts",
+        "default": "./dist/role-resolver.js"
+      }
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@organizoptera/types": "workspace:*",
+    "@organizoptera/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "organizoptera",
+    "rbac",
+    "authorization",
+    "permissions",
+    "roles"
+  ],
+  "license": "AGPL-3.0"
+}
